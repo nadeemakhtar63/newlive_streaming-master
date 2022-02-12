@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:newlive_streaming/screens/HomeScreen/TabScreen/Chat.dart';
 import 'package:newlive_streaming/screens/HomeScreen/TabScreen/GoLive.dart';
 import 'package:newlive_streaming/screens/HomeScreen/TabScreen/Home.dart';
+import 'package:newlive_streaming/screens/HomeScreen/TabScreen/NotificationScreen.dart';
+
 import 'AgoraTokenScreen/index.dart';
 class HomeTab extends StatefulWidget {
   const HomeTab({Key key}) : super(key: key);
@@ -15,8 +17,9 @@ class _HomeTabState extends State<HomeTab> {
   [
     Home(),
     Chat(),
+    NotificationScreen(),
     // GoLive(),
-    IndexPage()
+    IndexPage('','')
   ];
   void onTabTapped(int index) {
     setState(() {
@@ -42,6 +45,10 @@ class _HomeTabState extends State<HomeTab> {
             BottomNavigationBarItem(
               icon: Icon(Icons.chat,size: 24,),
               label: 'Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications,size: 24,),
+              label: 'Notification',
             ),
             // BottomNavigationBarItem(
             //   icon: Icon(Icons.live_tv,size: 24,),

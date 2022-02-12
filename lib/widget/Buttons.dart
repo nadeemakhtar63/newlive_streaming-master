@@ -77,11 +77,11 @@ textField(String title,_channelController,bool _validateError,type,min,max){
               children: <Widget>[
                 Expanded(
                   child:TextField(
+
                     autocorrect: true,
                     controller: _channelController,
                     style: TextStyle(color: Color(0xff3D4864)),
                     decoration: InputDecoration(
-
                         fillColor: Color(0xFFFFFFFF),
                         filled: true,
                         border: OutlineInputBorder(

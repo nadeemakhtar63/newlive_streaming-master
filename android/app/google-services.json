@@ -14,11 +14,64 @@
       },
       "oauth_client": [
         {
+          "client_id": "189772509998-1kv8ei2gjd2i8et5euh9tt0oq7qiflvg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.apps.newlive_streaming",
+            "certificate_hash": "b8a51e1c21d4123df4aac0b1b84e5698fe33cb74"
+          }
+        },
+        {
+          "client_id": "189772509998-8m21g7r3ff7e477ac646tonpshp3cnte.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.apps.newlive_streaming",
+            "certificate_hash": "bf929f3edf9a17e130a255d57ada0bd9a4aa372d"
+          }
+        },
+        {
           "client_id": "189772509998-v5jsvb6id666ghhul8d40e9oslhd2n41.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.apps.newlive_streaming",
             "certificate_hash": "2a9ac8810072702c669f6b2d489144e71a826e5e"
+          }
+        },
+        {
+          "client_id": "189772509998-4oh92mit9ccgcurp0km03qici8mkml0n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdomg1VNGiIJwtTG22abgGWIWGazpLBR8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "189772509998-4oh92mit9ccgcurp0km03qici8mkml0n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189772509998:android:f1f5b4e0f2143908c740bf",
+        "android_client_info": {
+          "package_name": "com.example.video_app_lsuk"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "189772509998-81a9bi9btoc2ahq9752tpdvgogf5u01s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.video_app_lsuk",
+            "certificate_hash": "bf929f3edf9a17e130a255d57ada0bd9a4aa372d"
           }
         },
         {

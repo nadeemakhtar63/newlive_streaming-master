@@ -1,12 +1,14 @@
 import 'dart:async';
-
 import 'package:agora_rtc_engine/rtc_engine.dart';
 import 'package:date_picker_timeline/date_picker_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_dynamic_links/firebase_dynamic_links.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_share/flutter_share.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:newlive_streaming/screens/MetingScreenDesign/newmeting.dart';
 import 'package:newlive_streaming/screens/new_meting.dart';
@@ -16,12 +18,28 @@ import 'package:url_launcher/url_launcher.dart';
 import './call.dart';
 
 class IndexPage extends StatefulWidget {
+  final link, uname;
+
+  IndexPage(this.link, this.uname);
+
   @override
   State<StatefulWidget> createState() => IndexState();
 }
+
 class IndexState extends State<IndexPage> {
   final _channelController = TextEditingController();
-  final _NameController = TextEditingController();
+  //controller for create meeting
+  TextEditingController _cMetingTitleController;
+  TextEditingController _cNameController;
+  //controller for join meeting
+  TextEditingController _jNameController;
+  TextEditingController _jMeetingController;
+  //controller for schedule meeting
+  TextEditingController _sMeetingController;
+  TextEditingController _sNameController;
+
+
+
   final _joinController = TextEditingController();
   String yearChoose = '';
   String monthChoose = '';
@@ -29,9 +47,16 @@ class IndexState extends State<IndexPage> {
   static final DateFormat dayformate = DateFormat('dd');
   static final DateFormat yearformate = DateFormat('yyyy');
   static final DateFormat monthformat = DateFormat('MMMM');
-   String selectMonthDay = "";
+  String selectMonthDay = "";
   DateTime _selectedValue = DateTime.now();
+  String datetime = "";
   DatePickerController _controller = DatePickerController();
+
+
+  bool _snamevalid=false;
+  bool _stitlevalide=false;
+
+
   bool _validateError = false;
   bool joincheck = true;
   bool createcheck = false;
@@ -45,8 +70,7 @@ class IndexState extends State<IndexPage> {
   bool _isCreatingLink = false;
 
   FirebaseDynamicLinks dynamicLinks = FirebaseDynamicLinks.instance;
-  final String _testString =
-  'join video';
+  final String _testString = 'join video';
 
   final String DynamicLink = 'https://wwww.google.com';
   final String Link = 'https://lsukapp.page.link/n3UL';
@@ -58,80 +82,84 @@ class IndexState extends State<IndexPage> {
 // }
 
   Future<void> initDynamicLinks() async {
-  dynamicLinks.onLink.listen((dynamicLinkData) {
-  Navigator.pushNamed(context, dynamicLinkData.link.path);
-  }).onError((error) {
-  print('onLink error');
-  print(error.message);
-  });
+    dynamicLinks.onLink.listen((dynamicLinkData) {
+      Navigator.pushNamed(context, dynamicLinkData.link.path);
+    }).onError((error) {
+      print('onLink error');
+      print(error.message);
+    });
   }
 
   Future<void> _createDynamicLink(bool short) async {
-  setState(() {
-  _isCreatingLink = true;
-  });
+    setState(() {
+      _isCreatingLink = true;
+    });
 
-  final DynamicLinkParameters parameters = DynamicLinkParameters(
-  uriPrefix: 'https://lsukapp.page.link/n3UL',
-  link: Uri.parse(DynamicLink),
-  androidParameters: const AndroidParameters(
-  packageName: 'com.example.video_app_lsuk',
-  minimumVersion: 0,
-  ),
-  iosParameters: const IOSParameters(
-  bundleId: 'io.invertase.testing',
-  minimumVersion: '0',
-  ),
-  );
-  // getValue ()async{
-  //   setState(()async {
-  //     // url=await AppUtile.buildDynmicLink();\
-  //     final PendingDynamicLinkData? data =
-  //     await dynamicLinks.getInitialLink();
-  //     final Uri? deepLink = data?.link;
-  //
-  //     if (deepLink != null) {
-  //       // ignore: unawaited_futures
-  //       Navigator.pushNamed(context, deepLink.path);
-  //     }
-  //   });
-  // }
-  Uri url;
-  if (short) {
-    final ShortDynamicLink shortLink =
-    await dynamicLinks.buildShortLink(parameters);
-    url = shortLink.shortUrl;
-  } else {
-    url = await dynamicLinks.buildLink(parameters);
+    final DynamicLinkParameters parameters = DynamicLinkParameters(
+      uriPrefix: 'https://lsukapp.page.link/n3UL',
+      link: Uri.parse(DynamicLink),
+      androidParameters: const AndroidParameters(
+        packageName: 'com.example.video_app_lsuk',
+        minimumVersion: 0,
+      ),
+      iosParameters: const IOSParameters(
+        bundleId: 'io.invertase.testing',
+        minimumVersion: '0',
+      ),
+    );
+    // getValue ()async{
+    //   setState(()async {
+    //     // url=await AppUtile.buildDynmicLink();\
+    //     final PendingDynamicLinkData? data =
+    //     await dynamicLinks.getInitialLink();
+    //     final Uri? deepLink = data?.link;
+    //
+    //     if (deepLink != null) {
+    //       // ignore: unawaited_futures
+    //       Navigator.pushNamed(context, deepLink.path);
+    //     }
+    //   });
+    // }
+    Uri url;
+    if (short) {
+      final ShortDynamicLink shortLink =
+          await dynamicLinks.buildShortLink(parameters);
+      url = shortLink.shortUrl;
+    } else {
+      url = await dynamicLinks.buildLink(parameters);
+    }
+    setState(() {
+      _linkMessage = url.toString();
+      _isCreatingLink = false;
+    });
   }
-  setState(() {
-    _linkMessage = url.toString();
-    _isCreatingLink = false;
-  });
-  }
+
   ClientRole _role = ClientRole.Broadcaster;
+
   @override
   void dispose() {
     // dispose input controller
     _channelController.dispose();
     super.dispose();
   }
- // late String url = "link";
+
+  // late String url = "link";
   bool createmeting = false;
   bool joinmeting = true;
- Future<void> getlink()async{
-   final PendingDynamicLinkData data =
-   await dynamicLinks.getInitialLink();
-   final Uri deepLink = data?.link;
-   if (deepLink != null) {
-     // ignore: unawaited_futures
-     Navigator.pushNamed(context, deepLink.path);
-   }
-   if (_linkMessage != null) {
-     await launch(_linkMessage);
-   }
- }
-  Future<void> _showMyDialog() async {
+
+  Future<void> getlink() async {
+    final PendingDynamicLinkData data = await dynamicLinks.getInitialLink();
+    final Uri deepLink = data?.link;
+    if (deepLink != null) {
+      // ignore: unawaited_futures
+      Navigator.pushNamed(context, deepLink.path);
+    }
+    if (_linkMessage != null) {
+      await launch(_linkMessage);
+    }
+  }
+
+  Future<void> _showMyDialog(TextEditingController name,TextEditingController meting) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false, // user must tap button!
@@ -149,8 +177,17 @@ class IndexState extends State<IndexPage> {
             TextButton(
               child: Text('Live'),
               onPressed: () {
-                Navigator.of(context).pop();
-                onJoin();
+                if(name.text.isEmpty && meting.text.isEmpty)
+                  {
+                    Get.snackbar("Field", 'Created field');
+                  }
+                else
+                  {
+                    Get.snackbar("Meting", 'Created Successfully');
+                    Navigator.of(context).pop();
+                  }
+
+               // onJoin();
               },
             ),
             TextButton(
@@ -158,7 +195,7 @@ class IndexState extends State<IndexPage> {
               onPressed: () {
                 sharesocial();
                 Navigator.of(context).pop();
-               // onJoin();
+                // onJoin();
               },
             ),
           ],
@@ -166,9 +203,11 @@ class IndexState extends State<IndexPage> {
       },
     );
   }
-sharesocial()async{
-   await FlutterShare.share(title: _linkMessage,text: _linkMessage);
-}
+
+  sharesocial() async {
+    await FlutterShare.share(title: _linkMessage, text: _linkMessage);
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setEnabledSystemUIOverlays([SystemUiOverlay.bottom]);
@@ -181,7 +220,9 @@ sharesocial()async{
           child: Container(
             child: Column(
               children: [
-                SizedBox(height: 30,),
+                SizedBox(
+                  height: 30,
+                ),
                 Container(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -195,12 +236,11 @@ sharesocial()async{
                               createcheck = true;
                               joincheck = false;
                               scedualecheck = false;
-                             // genratLink=true;
-                           });
-
+                              // genratLink=true;
+                            });
                           },
-                          child: metingblocks(createmeting, context, 'Create Meting')
-                      ),
+                          child: metingblocks(
+                              createmeting, context, 'Create Meting')),
                       InkWell(
                           onTap: () {
                             setState(() {
@@ -213,9 +253,8 @@ sharesocial()async{
                               scedualecheck = false;
                             });
                           },
-                          child: metingblocks(
-                              joinmeting, context, 'Join Meting')
-                      ),
+                          child:
+                              metingblocks(joinmeting, context, 'Join Meting')),
                       InkWell(
                           onTap: () {
                             setState(() {
@@ -229,348 +268,444 @@ sharesocial()async{
                             });
                           },
                           child: metingblocks(
-                              scedualescolor, context, 'Schedule\nMeting')
-                      )
+                              scedualescolor, context, 'Schedule\nMeting'))
                     ],
                   ),
                 ),
-                SizedBox(height: 20,),
+                SizedBox(
+                  height: 20,
+                ),
                 Container(
-                  child: createcheck ? Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Center(
-                         child: Text("Create New Meting", style: TextStyle(
-                           fontSize: 22, fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple),)),
-                        SizedBox(height: 30,),
-                        textField(
-                            'Meting Title', _channelController, metingTitle,
-                            TextInputType.text, 1, 1),
-                        SizedBox(height: 30,),
+                  child: createcheck
+                      ? Container(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Center(
+                                  child: Text(
+                                "Create New Meting",
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.deepPurple),
+                              )),
+                              SizedBox(
+                                height: 30,
+                              ),
+                              textField('Meting Title', _cMetingTitleController = TextEditingController(),
+                                  metingTitle, TextInputType.text, 1, 1),
+                              SizedBox(
+                                height: 30,
+                              ),
 
-                        textField('UserName', _NameController, metingUName,
-                            TextInputType.text, 1, 1),
-                       // SizedBox(height: 30,),
-                        // InkWell(
-                        //   onTap: () async {
-                        //     if (_linkMessage != null) {
-                        //       await launch(_linkMessage!);
-                        //     }
-                        //   },
-                        //   onLongPress: () {
-                        //     Clipboard.setData(ClipboardData(text: _linkMessage));
-                        //     ScaffoldMessenger.of(context).showSnackBar(
-                        //       const SnackBar(content: Text('Copied Link!')),
-                        //     );
-                        //   },
-                        //   child: Text(
-                        //     _linkMessage ?? '',
-                        //     style: const TextStyle(color: Colors.blue),
-                        //   ),
-                        // ),
-                        // Text(_linkMessage == null ? '' : _testString),
-                        SizedBox(height: 30,),
-                        // Padding(
-                        //   padding: EdgeInsets.only(right: 20),
-                        //   child: Align(
-                        //       alignment: Alignment.centerLeft,
-                        //     child:InkWell(
-                        //       onTap: ()  {
-                        //         // final PendingDynamicLinkData? data =
-                        //         // await dynamicLinks
-                        //         //     .getDynamicLink(Uri.parse(Link));
-                        //         // final Uri? deepLink = data?.link;
-                        //         // if (deepLink != null) {
-                        //         //   // ignore: unawaited_futures
-                        //         //   Navigator.pushNamed(context, deepLink.path);
-                        //         // }
-                        //       }
-                        //     ),
-                        //
-                        //       // child: InkWell(
-                        //       //     onTap:()async{
-                        //       //
-                        //       //   // url=await AppUtile.buildDynmicLink();\
-                        //       //   final PendingDynamicLinkData? data =
-                        //       //   await dynamicLinks.getInitialLink();
-                        //       //   final Uri? deepLink = data?.link;
-                        //       //
-                        //       //   if (deepLink != null) {
-                        //       //     // ignore: unawaited_futures
-                        //       //     Navigator.pushNamed(context, deepLink.path);
-                        //       //
-                        //       // };
-                        //       //   // Share.share(deepLink);
-                        //       //   // Clipboard.setData(ClipboardData(text:url));
-                        //       //   // ScaffoldMessenger.of(context).showSnackBar(
-                        //       //   //     const SnackBar(content: Text('Copied Link!')));
-                        //       //     },
-                        //       //     child: Text("Invite Friend",style: TextStyle(fontSize: 24,color: Colors.deepPurple),))
-                        //   ),
-                        // ),
-                        InkWell(
-                          onTap: () async {
-                            if (_linkMessage != null) {
-                              await launch(_linkMessage);
-                            }
-                          },
-                          onLongPress: () {
-                            Clipboard.setData(ClipboardData(text: _linkMessage));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Copied Link!')),
-                            );
-                          },
-                          child: Text(
-                            _linkMessage ?? '',
-                            style: const TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                        //Text(_linkMessage == null ? '' : _testString),
-                        SizedBox(height: 30,),
-                        InkWell(
-                            onTap:() {
-                             _createDynamicLink(false);
-                              _showMyDialog();
-                            },
+                              textField(
+                                  'UserName',
+                                  _cNameController = TextEditingController(),
+                                  metingUName,
+                                  TextInputType.text,
+                                  1,
+                                  1),
+                              // SizedBox(height: 30,),
+                              // InkWell(
+                              //   onTap: () async {
+                              //     if (_linkMessage != null) {
+                              //       await launch(_linkMessage!);
+                              //     }
+                              //   },
+                              //   onLongPress: () {
+                              //     Clipboard.setData(ClipboardData(text: _linkMessage));
+                              //     ScaffoldMessenger.of(context).showSnackBar(
+                              //       const SnackBar(content: Text('Copied Link!')),
+                              //     );
+                              //   },
+                              //   child: Text(
+                              //     _linkMessage ?? '',
+                              //     style: const TextStyle(color: Colors.blue),
+                              //   ),
+                              // ),
+                              // Text(_linkMessage == null ? '' : _testString),
+                              SizedBox(
+                                height: 30,
+                              ),
+                              // Padding(
+                              //   padding: EdgeInsets.only(right: 20),
+                              //   child: Align(
+                              //       alignment: Alignment.centerLeft,
+                              //     child:InkWell(
+                              //       onTap: ()  {
+                              //         // final PendingDynamicLinkData? data =
+                              //         // await dynamicLinks
+                              //         //     .getDynamicLink(Uri.parse(Link));
+                              //         // final Uri? deepLink = data?.link;
+                              //         // if (deepLink != null) {
+                              //         //   // ignore: unawaited_futures
+                              //         //   Navigator.pushNamed(context, deepLink.path);
+                              //         // }
+                              //       }
+                              //     ),
+                              //
+                              //       // child: InkWell(
+                              //       //     onTap:()async{
+                              //       //
+                              //       //   // url=await AppUtile.buildDynmicLink();\
+                              //       //   final PendingDynamicLinkData? data =
+                              //       //   await dynamicLinks.getInitialLink();
+                              //       //   final Uri? deepLink = data?.link;
+                              //       //
+                              //       //   if (deepLink != null) {
+                              //       //     // ignore: unawaited_futures
+                              //       //     Navigator.pushNamed(context, deepLink.path);
+                              //       //
+                              //       // };
+                              //       //   // Share.share(deepLink);
+                              //       //   // Clipboard.setData(ClipboardData(text:url));
+                              //       //   // ScaffoldMessenger.of(context).showSnackBar(
+                              //       //   //     const SnackBar(content: Text('Copied Link!')));
+                              //       //     },
+                              //       //     child: Text("Invite Friend",style: TextStyle(fontSize: 24,color: Colors.deepPurple),))
+                              //   ),
+                              // ),
+                              InkWell(
+                                onTap: () async {
+                                  if (_linkMessage != null) {
+                                    await launch(_linkMessage);
+                                  }
+                                },
+                                onLongPress: () {
+                                  Clipboard.setData(
+                                      ClipboardData(text: _linkMessage));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Copied Link!')),
+                                  );
+                                },
+                                child: Text(
+                                  _linkMessage ?? '',
+                                  style: const TextStyle(color: Colors.blue),
+                                ),
+                              ),
+                              //Text(_linkMessage == null ? '' : _testString),
+                              SizedBox(
+                                height: 30,
+                              ),
+                              InkWell(
+                                  onTap: () {
+                                    _createDynamicLink(false);
+                                    _showMyDialog(_cNameController,_cMetingTitleController);
+                                  },
 
-                            // {
-                            //   try {
-                            //   //  getlink();
-                            //
-                            //   //  onJoin();
-                            //   }
-                            //   catch (e) {
-                            //     print(e.toString());
-                            //   }
-                            //   setState(() {});
-                            // },
-                            child: ButtonDesign(
-                              "Create", context, Colors.deepPurple,)
-                        ),
-                      ],
-                    ),
-                  ) : joincheck ? Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Center(child: Text("Meting Join", style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple),)),
-                        SizedBox(height: 30,),
-                        textField('UserName', _NameController, _validateError,
-                            TextInputType.text, 1, 1),
-                        SizedBox(height: 30,),
-                         textField(
-                            'link', _NameController, _validateError,
-                            TextInputType.multiline, 1, 5) ,
-                        SizedBox(height: 30,),
-                        InkWell(
-                            onTap: ()  {
-                              try {
-                                 onJoin();
-                              CallPage();
-                              }
-                              catch (e) {
-                                print(e.toString());
-                              }
-                              setState(() async{});
-                            },
-                            child: ButtonDesign("Join", context, Colors
-                                .deepPurple,)
-                        ),
-                      ],
-                    ),
-                  ) : scedualecheck ? Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Center(child: Text(
-                          "Schedule Meting", style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple),)),
-                        SizedBox(height: 30,),
-                        Container(
-                          child: DatePicker(
-                            DateTime.now(),
-                            width: 60,
-                            height: 80,
-                            controller: _controller,
-                            initialSelectedDate: DateTime.now(),
-                            selectionColor: selectMonthDay == null
-                                ? Colors.red
-                                : Colors.deepPurple,
-                            selectedTextColor: Colors.white,
-                            // inactiveDates: [
-                            //   DateTime.now().add(Duration(days: 1)),
-                            //   DateTime.now().add(Duration(days: 3)),
-                            //   DateTime.now().add(Duration(days: 4)),
-                            //   DateTime.now().add(Duration(days: 7))
-                            // ],
-                            onDateChange: (date) {
-                              // New date selected
-                              setState(() {
-                                _selectedValue = date;
-                                selectMonthDay = dayformate.format(date);
-                                yearChoose = yearformate.format(date);
-                                monthChoose = monthformat.format(date);
-                                dayChoose = dayformate.format(date);
-                              });
-                            },
+                                  // {
+                                  //   try {
+                                  //   //  getlink();
+                                  //
+                                  //   //  onJoin();
+                                  //   }
+                                  //   catch (e) {
+                                  //     print(e.toString());
+                                  //   }
+                                  //   setState(() {});
+                                  // },
+                                  child: ButtonDesign(
+                                    "Create",
+                                    context,
+                                    Colors.deepPurple,
+                                  )),
+                            ],
                           ),
-                        ),
-                        SizedBox(height: 30,),
-                        textField(
-                            'Meting Title', _channelController, _validateError,
-                            TextInputType.text, 1, 1),
-                        SizedBox(height: 30,),
-                        textField('UserName', _NameController, _validateError,
-                            TextInputType.text, 1, 1),
-                        SizedBox(height: 30,),
-                        InkWell(
-                            onTap: () async {
-                              try {
-                              //  onJoin();
-                                CallPage();
-                                // url=await AppUtile.buildDynmicLink();
-                              }
-                              catch (e) {
-                                print(e.toString());
-                              }
-                              setState(() {});
-                            },
-                            child: ButtonDesign("Schedule", context, Colors
-                                .deepPurple,)
-                        ),
-                      ],
-                    ),
-                  ) : null,
+                        )
+                      : joincheck
+                          ? Container(
+                              child: Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  Center(
+                                    child: Text(
+                                      "Meting Join",
+                                      style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.deepPurple),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  textField(
+                                      'UserName',
+                                      //_NameController = TextEditingController(),
+                                      _jNameController = TextEditingController(
+                                          text: widget.uname == null
+                                              ? null
+                                              : widget.uname),
+                                      widget.uname==null?_validateError=true:_validateError,
+                                      TextInputType.text,
+                                      1,
+                                      1),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  textField(
+                                      'Meting Link',
+                                      _jMeetingController =
+                                          TextEditingController(
+                                              text: widget.link == null
+                                                  ? null
+                                                  : widget.link),
+
+                                      //_metingTitleController=TextEditingController(),
+                                      _validateError,
+                                      TextInputType.multiline,
+                                      1,
+                                      5),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  InkWell(
+                                      onTap: () {
+                                        try {
+                                          onJoin(_jNameController,_jMeetingController);
+                                          CallPage();
+                                        } catch (e) {
+                                          print(e.toString());
+                                        }
+                                        setState(() async {});
+                                      },
+                                      child: ButtonDesign(
+                                        "Join",
+                                        context,
+                                        Colors.deepPurple,
+                                      )),
+                                ],
+                              ),
+                            )
+                          : scedualecheck
+                              ? Container(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      Center(
+                                          child: Text(
+                                        "Schedule Meting",
+                                        style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.deepPurple),
+                                      )),
+                                      SizedBox(
+                                        height: 30,
+                                      ),
+                                      Container(
+                                        child: DatePicker(
+                                          DateTime.now(),
+                                          width: 60,
+                                          height: 90,
+                                          controller: _controller,
+                                          initialSelectedDate: DateTime.now(),
+                                          selectionColor: selectMonthDay == null
+                                              ? Colors.red
+                                              : Colors.deepPurple,
+                                          selectedTextColor: Colors.white,
+                                          // inactiveDates: [
+                                          //   DateTime.now().add(Duration(days: 1)),
+                                          //   DateTime.now().add(Duration(days: 3)),
+                                          //   DateTime.now().add(Duration(days: 4)),
+                                          //   DateTime.now().add(Duration(days: 7))
+                                          // ],
+                                          onDateChange: (date) {
+                                            // New date selected
+                                            setState(() {
+                                              _selectedValue = date;
+                                              selectMonthDay =
+                                                  dayformate.format(date);
+                                              yearChoose =
+                                                  yearformate.format(date);
+                                              monthChoose =
+                                                  monthformat.format(date);
+                                              dayChoose =
+                                                  dayformate.format(date);
+                                              datetime = selectMonthDay +
+                                                  " " +
+                                                  monthChoose +
+                                                  " " +
+                                                  yearChoose;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 30,
+                                      ),
+                                      textField(
+                                          'Meting Title',
+                                          _sMeetingController =TextEditingController(),
+                                             // TextEditingController(),
+                                          _stitlevalide,
+                                          TextInputType.text,
+                                          1,
+                                          1),
+                                      SizedBox(
+                                        height: 30,
+                                      ),
+                                      textField(
+                                          'UserName',
+                                          _sNameController=TextEditingController() ,
+                                           //   TextEditingController(),
+                                          _snamevalid,
+                                          TextInputType.text,
+                                          1,
+                                          1),
+                                      SizedBox(
+                                        height: 30,
+                                      ),
+                                      InkWell(
+                                          onTap: () async {
+
+                                            datasave(_sNameController,_sMeetingController,datetime);
+                                            try {
+                                              //  onJoin();
+                                              CallPage();
+                                              // url=await AppUtile.buildDynmicLink();
+                                            } catch (e) {
+                                              print(e.toString());
+                                            }
+                                            setState(() {});
+                                          },
+                                          child: ButtonDesign(
+                                            "Schedule",
+                                            context,
+                                            Colors.deepPurple,
+                                          )),
+                                    ],
+                                  ),
+                                )
+                              : null,
                 )
               ],
             ),
           ),
         )
-      // Container(
-      //   padding: const EdgeInsets.symmetric(horizontal: 20),
-      //   height: 400,
-      //   child: Column(
-      //     children: <Widget>[
-      //       Row(
-      //         children: <Widget>[
-      //           Expanded(
-      //           child:TextField(
-      //                 autocorrect: true,
-      //                 controller: _channelController,
-      //                 style: TextStyle(color: Color(0xff3D4864)),
-      //                 decoration: InputDecoration(
-      //                     fillColor: Color(0xFFFFFFFF),
-      //                     filled: true,
-      //                     border: OutlineInputBorder(
-      //                         borderRadius: BorderRadius.circular(80),
-      //                         borderSide: new BorderSide(color: Color(0xff3D4864))
-      //                     ),
-      //                     enabledBorder:  OutlineInputBorder(
-      //                       borderRadius: BorderRadius.circular(80),
-      //                       borderSide:  BorderSide(color: Color(0xff3D4864), width: 0.0),
-      //                     ),
-      //                     focusedBorder: OutlineInputBorder(
-      //                       borderRadius: BorderRadius.circular(80),
-      //                       borderSide:  BorderSide(color: Color(0xff3D4864), width: 0.0),
-      //                     ),
-      //                     hintText: "Enter Channel Name",
-      //                     hintStyle: TextStyle(color: Color(0xff3D4864)),
-      //                     errorText: _validateError?"channel name Required*":null
-      //                 ),
-      //               ),
-      //               // child: TextField(
-      //               //   controller: _channelController,
-      //               //   decoration: InputDecoration(
-      //               //     errorText:
-      //               //     _validateError ? 'Channel name is mandatory' : null,
-      //               //     border: UnderlineInputBorder(
-      //               //       borderSide: BorderSide(width: 1),
-      //               //     ),
-      //               //     hintText: 'Channel name',
-      //               //   ),
-      //               // )
-      //           )
-      //         ],
-      //       ),
-      //       Column(
-      //         children: [
-      //           ListTile(
-      //             onTap: ()async{
-      //               try{
-      //           url=await AppUtile.buildDynmicLink();
-      //               }
-      //               catch(e){
-      //                 print(e.toString());
-      //               }
-      //           setState(() {});
-      //             },
-      //             title: Text("Create Meting and share link"),
-      //             leading: Radio(
-      //               value: ClientRole.Broadcaster,
-      //               groupValue: _role,
-      //               onChanged: (ClientRole? value) {
-      //                 setState(() {
-      //                   _role = value;
-      //                 });
-      //
-      //               },
-      //             ),
-      //           ),
-      //           // ListTile(
-      //           //   title: Text(ClientRole.Audience.toString()),
-      //           //   leading: Radio(
-      //           //     value: ClientRole.Audience,
-      //           //     groupValue: _role,
-      //           //     onChanged: (ClientRole? value) {
-      //           //       setState(() {
-      //           //         _role = value;
-      //           //       });
-      //           //     },
-      //           //   ),
-      //           // )
-      //         ],
-      //       ),
-      //       Padding(
-      //         padding: const EdgeInsets.symmetric(vertical: 20),
-      //         child: Row(
-      //           children: <Widget>[
-      //             Expanded(
-      //               child: ElevatedButton(
-      //                 onPressed: onJoin,
-      //                 child: Text('Join'),
-      //                 style: ButtonStyle(
-      //                     backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
-      //                     foregroundColor: MaterialStateProperty.all(Colors.white)
-      //                 ),
-      //               ),
-      //             ),
-      //             // Expanded(
-      //             //   child: RaisedButton(
-      //             //     onPressed: onJoin,
-      //             //     child: Text('Join'),
-      //             //     color: Colors.blueAccent,
-      //             //     textColor: Colors.white,
-      //             //   ),
-      //             // )
-      //           ],
-      //         ),
-      //       )
-      //     ],
-      //   ),
-      // ),
-      // ),
-    );
+        // Container(
+        //   padding: const EdgeInsets.symmetric(horizontal: 20),
+        //   height: 400,
+        //   child: Column(
+        //     children: <Widget>[
+        //       Row(
+        //         children: <Widget>[
+        //           Expanded(
+        //           child:TextField(
+        //                 autocorrect: true,
+        //                 controller: _channelController,
+        //                 style: TextStyle(color: Color(0xff3D4864)),
+        //                 decoration: InputDecoration(
+        //                     fillColor: Color(0xFFFFFFFF),
+        //                     filled: true,
+        //                     border: OutlineInputBorder(
+        //                         borderRadius: BorderRadius.circular(80),
+        //                         borderSide: new BorderSide(color: Color(0xff3D4864))
+        //                     ),
+        //                     enabledBorder:  OutlineInputBorder(
+        //                       borderRadius: BorderRadius.circular(80),
+        //                       borderSide:  BorderSide(color: Color(0xff3D4864), width: 0.0),
+        //                     ),
+        //                     focusedBorder: OutlineInputBorder(
+        //                       borderRadius: BorderRadius.circular(80),
+        //                       borderSide:  BorderSide(color: Color(0xff3D4864), width: 0.0),
+        //                     ),
+        //                     hintText: "Enter Channel Name",
+        //                     hintStyle: TextStyle(color: Color(0xff3D4864)),
+        //                     errorText: _validateError?"channel name Required*":null
+        //                 ),
+        //               ),
+        //               // child: TextField(
+        //               //   controller: _channelController,
+        //               //   decoration: InputDecoration(
+        //               //     errorText:
+        //               //     _validateError ? 'Channel name is mandatory' : null,
+        //               //     border: UnderlineInputBorder(
+        //               //       borderSide: BorderSide(width: 1),
+        //               //     ),
+        //               //     hintText: 'Channel name',
+        //               //   ),
+        //               // )
+        //           )
+        //         ],
+        //       ),
+        //       Column(
+        //         children: [
+        //           ListTile(
+        //             onTap: ()async{
+        //               try{
+        //           url=await AppUtile.buildDynmicLink();
+        //               }
+        //               catch(e){
+        //                 print(e.toString());
+        //               }
+        //           setState(() {});
+        //             },
+        //             title: Text("Create Meting and share link"),
+        //             leading: Radio(
+        //               value: ClientRole.Broadcaster,
+        //               groupValue: _role,
+        //               onChanged: (ClientRole? value) {
+        //                 setState(() {
+        //                   _role = value;
+        //                 });
+        //
+        //               },
+        //             ),
+        //           ),
+        //           // ListTile(
+        //           //   title: Text(ClientRole.Audience.toString()),
+        //           //   leading: Radio(
+        //           //     value: ClientRole.Audience,
+        //           //     groupValue: _role,
+        //           //     onChanged: (ClientRole? value) {
+        //           //       setState(() {
+        //           //         _role = value;
+        //           //       });
+        //           //     },
+        //           //   ),
+        //           // )
+        //         ],
+        //       ),
+        //       Padding(
+        //         padding: const EdgeInsets.symmetric(vertical: 20),
+        //         child: Row(
+        //           children: <Widget>[
+        //             Expanded(
+        //               child: ElevatedButton(
+        //                 onPressed: onJoin,
+        //                 child: Text('Join'),
+        //                 style: ButtonStyle(
+        //                     backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
+        //                     foregroundColor: MaterialStateProperty.all(Colors.white)
+        //                 ),
+        //               ),
+        //             ),
+        //             // Expanded(
+        //             //   child: RaisedButton(
+        //             //     onPressed: onJoin,
+        //             //     child: Text('Join'),
+        //             //     color: Colors.blueAccent,
+        //             //     textColor: Colors.white,
+        //             //   ),
+        //             // )
+        //           ],
+        //         ),
+        //       )
+        //     ],
+        //   ),
+        // ),
+        // ),
+        );
   }
 
-  Future<void> onJoin() async {
+  Future<void> onJoin(TextEditingController a,TextEditingController b) async {
     // update input validation
     setState(() {
-      _channelController.text.isEmpty
+      a.text.isEmpty&&b.text.isEmpty
           ? _validateError = true
           : _validateError = false;
     });
@@ -582,11 +717,10 @@ sharesocial()async{
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              New_meting(
-                channelName: _channelController.text,
-                role: _role,
-              ),
+          builder: (context) => New_meting(
+            channelName: _channelController.text,
+            role: _role,
+          ),
         ),
       );
     }
@@ -595,5 +729,38 @@ sharesocial()async{
   Future<void> _handleCameraAndMic(Permission permission) async {
     final status = await permission.request();
     print(status);
+  }
+
+  datasave(a,b,date) async {
+
+    if(a.text.isEmpty&&b.text.isEmpty)
+      {
+        setState(() {
+          _snamevalid = true;
+          _stitlevalide = false;
+
+        });
+      }
+    else {
+      User user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        Get.snackbar("Create Meeting Schedule  ", 'Sucess');
+
+        String uid = user.uid;
+        DatabaseReference databaseRef = await FirebaseDatabase.instance
+            .reference()
+            .child("meetingSchedule")
+            .child(uid);
+        String meetingId = databaseRef.push().key;
+        await databaseRef.child(meetingId).set({
+          "meetingId": meetingId.toString(),
+          "meeting_title": _sMeetingController.text.toString(),
+          "user_Name": _sNameController.text.toString(),
+          "date": date,
+        });
+      }
+    }
+
+    //DatabaseReference databaseRef = await FirebaseDatabase.instance.reference().child("meetingSchedule");
   }
 }
